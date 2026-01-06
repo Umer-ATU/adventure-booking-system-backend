@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import connect_to_mongo, close_mongo_connection
 from app.core.logging import setup_logging
-from app.routes.api import router as api_router
+# from app.routes.api import router as api_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,7 +33,7 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
