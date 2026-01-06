@@ -8,8 +8,8 @@ services:
     volumes:
       - .:/app
     environment:
-      - MONGODB_URL=mongodb://mongodb:27017
-      - MONGODB_DB_NAME=app_db
+      - MONGODB_URL=${MONGODB_URL}
+      - MONGODB_DB_NAME=${DATABASE_NAME}
     depends_on:
       - mongodb
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -20,6 +20,7 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    command: ["mongod", "--quiet"]
 
 volumes:
   mongodb_data:
