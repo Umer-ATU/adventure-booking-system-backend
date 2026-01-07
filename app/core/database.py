@@ -3,17 +3,23 @@ from app.core.config import settings
 
 class Database:
     client: AsyncIOMotorClient = None
+    db = None
 
 db = Database()
 
-async def get_database() -> AsyncIOMotorClient:
-    return db.client
+async def get_database():
+    return db.db
 
 async def connect_to_mongo():
     db.client = AsyncIOMotorClient(settings.MONGODB_URL)
+    db.db = db.client[settings.MONGODB_DB_NAME]
     print("Connected to MongoDB")
 
 async def close_mongo_connection():
     if db.client:
         db.client.close()
         print("Closed MongoDB connection")
+
+# ✅ ADD COLLECTIONS HERE
+def booking_collection():
+    return db.db["bookings"]

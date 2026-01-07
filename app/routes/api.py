@@ -1,5 +1,7 @@
+from app.routes.booking_routes import router as booking_router
 from fastapi import APIRouter
 from app.routes.v1 import items
 
 router = APIRouter()
+router.include_router(booking_router)
 router.include_router(items.router, prefix="/items", tags=["items"])

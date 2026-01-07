@@ -8,6 +8,7 @@ from app.core.database import connect_to_mongo, close_mongo_connection
 from app.core.logging import setup_logging
 from app.routes.api import router as api_router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -17,11 +18,15 @@ async def lifespan(app: FastAPI):
     # Shutdown
     await close_mongo_connection()
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
+
+# Register all API routes (booking, items, etc.)
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
@@ -33,7 +38,6 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
