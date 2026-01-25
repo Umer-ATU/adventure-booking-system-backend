@@ -1,0 +1,78 @@
+from typing import Optional
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from app.core.config import settings
+from app.core.database import get_database
+from app.core.security import decode_token, TokenData
+from app.repositories.user import UserRepository
+from app.repositories.booking import BookingRepository
+from app.schemas.user import UserInDB, UserRole
+
+
+# Security scheme
+security = HTTPBearer(auto_error=False)
+
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    user_repo: UserRepository = Depends(get_user_repository)
+) -> UserInDB:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+    token_data = decode_token(token)
+    
+    if token_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = await user_repo.get_by_id(token_data.user_id)
+    
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated",
+        )
+
+    return user
+
+
+async def get_current_active_user(
+    current_user: UserInDB = Depends(get_current_user)
+) -> UserInDB:
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user"
+        )
+    return current_user
+
+
+async def get_current_admin(
+    current_user: UserInDB = Depends(get_current_user)
+) -> UserInDB:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user
+
+
