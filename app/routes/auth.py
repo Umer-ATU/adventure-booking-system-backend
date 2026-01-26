@@ -28,6 +28,32 @@ from app.schemas.user import (
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    user_data: UserCreate,
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Register a new user account.
+    
+    - **email**: Unique email address
+    - **full_name**: User's full name
+    - **password**: Password (min 8 chars, must contain uppercase, lowercase, digit)
+    - **phone**: Optional phone number
+    """
+    # Check if email already exists
+    if await user_repo.email_exists(user_data.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    user = await user_repo.create(user_data)
+    return user
+
+
+
 @router.post("/login", response_model=Token)
 async def login(
     credentials: UserLogin,
