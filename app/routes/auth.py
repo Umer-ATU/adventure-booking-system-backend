@@ -53,7 +53,6 @@ async def register(
     return user
 
 
-
 @router.post("/login", response_model=Token)
 async def login(
     credentials: UserLogin,
@@ -129,6 +128,34 @@ async def refresh_token(
 
     return Token(access_token=access_token, refresh_token=refresh_token)
 
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get current authenticated user's profile.
+    
+    Requires valid access token in Authorization header.
+    """
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_profile(
+    user_update: UserUpdate,
+    current_user: UserInDB = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Update current user's profile.
+    
+    - **full_name**: New full name
+    - **phone**: New phone number
+    - **avatar_url**: Profile picture URL
+    """
+    updated_user = await user_repo.update(current_user.id, user_update)
+    return updated_user
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
