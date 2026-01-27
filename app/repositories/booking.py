@@ -1,3 +1,6 @@
+"""
+Enhanced booking repository for database operations.
+"""
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -90,7 +93,11 @@ class BookingRepository:
         bookings = await cursor.to_list(length=limit)
         return [BookingInDB(**booking) for booking in bookings], total
 
-      async def update(self, booking_id: str, booking_update: BookingUpdate) -> Optional[BookingInDB]:
+    async def update(
+        self,
+        booking_id: str,
+        booking_update: BookingUpdate
+    ) -> Optional[BookingInDB]:
         """Update a booking (admin only)."""
         if not ObjectId.is_valid(booking_id):
             return None
@@ -101,15 +108,66 @@ class BookingRepository:
 
         update_data["updated_at"] = datetime.utcnow()
 
-        result = await self.collection.update_one(
+        await self.collection.update_one(
             {"_id": booking_id},
             {"$set": update_data}
         )
 
-        if result.modified_count == 0 and result.matched_count == 0:
-            return None
-
         return await self.get_by_id(booking_id)
+
+    async def update_payment_status(
+        self,
+        booking_id: str,
+        payment_status: str,
+        stripe_payment_id: Optional[str] = None
+    ) -> bool:
+        """Update payment status of a booking."""
+        update_data: Dict[str, Any] = {
+            "payment_status": payment_status,
+            "updated_at": datetime.utcnow()
+        }
+        if stripe_payment_id:
+            update_data["stripe_payment_id"] = stripe_payment_id
+            
+        result = await self.collection.update_one(
+            {"_id": booking_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+
+    async def confirm_booking(self, booking_id: str) -> bool:
+        """Confirm a booking (after payment)."""
+        result = await self.collection.update_one(
+            {"_id": booking_id},
+            {
+                "$set": {
+                    "status": BookingStatus.CONFIRMED.value,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
+
+    async def cancel_booking(
+        self,
+        booking_id: str,
+        cancelled_by: str,
+        reason: Optional[str] = None
+    ) -> bool:
+        """Cancel a booking."""
+        result = await self.collection.update_one(
+            {"_id": booking_id},
+            {
+                "$set": {
+                    "status": BookingStatus.CANCELLED.value,
+                    "cancelled_by": cancelled_by,
+                    "cancellation_reason": reason,
+                    "cancelled_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
 
     async def delete(self, booking_id: str) -> bool:
         """Delete a booking."""
@@ -118,6 +176,39 @@ class BookingRepository:
         result = await self.collection.delete_one({"_id": booking_id})
         return result.deleted_count > 0
 
-    async def count(self) -> int:
-        """Get total count of bookings."""
-        return await self.collection.count_documents({})
+    async def count(
+        self,
+        status: Optional[BookingStatus] = None,
+        user_id: Optional[str] = None
+    ) -> int:
+        """Get count of bookings."""
+        query: Dict[str, Any] = {}
+        if status:
+            query["status"] = status.value
+        if user_id:
+            query["user_id"] = user_id
+        return await self.collection.count_documents(query)
+
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get booking statistics for admin dashboard."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": "$status",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        status_counts = await self.collection.aggregate(pipeline).to_list(length=10)
+        
+        total = await self.collection.count_documents({})
+        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_count = await self.collection.count_documents(
+            {"created_at": {"$gte": today}}
+        )
+        
+        return {
+            "total": total,
+            "today": today_count,
+            "by_status": {item["_id"]: item["count"] for item in status_counts}
+        }
