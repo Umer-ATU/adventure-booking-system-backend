@@ -53,7 +53,6 @@ async def register(
     return user
 
 
-
 @router.post("/login", response_model=Token)
 async def login(
     credentials: UserLogin,
@@ -130,3 +129,151 @@ async def refresh_token(
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get current authenticated user's profile.
+    
+    Requires valid access token in Authorization header.
+    """
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_profile(
+    user_update: UserUpdate,
+    current_user: UserInDB = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Update current user's profile.
+    
+    - **full_name**: New full name
+    - **phone**: New phone number
+    - **avatar_url**: Profile picture URL
+    """
+    updated_user = await user_repo.update(current_user.id, user_update)
+    return updated_user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    password_data: PasswordChange,
+    current_user: UserInDB = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Change current user's password.
+    
+    - **current_password**: Current password for verification
+    - **new_password**: New password (min 8 characters)
+    """
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    await user_repo.update_password(current_user.id, password_data.new_password)
+    return None
+
+
+@router.post("/admin/create", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_admin_user(
+    user_data: UserCreate,
+    current_user: UserInDB = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Create a new admin user. Only existing admins can create new admins.
+    
+    - **email**: Admin email address
+    - **full_name**: Admin's full name
+    - **password**: Password
+    """
+    # Only admins can create admins
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can create admin accounts"
+        )
+
+    if await user_repo.email_exists(user_data.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    user = await user_repo.create(user_data, role=UserRole.ADMIN)
+    return user
+
+
+@router.get("/admin/users", response_model=list[UserResponse])
+async def list_users(
+    skip: int = 0,
+    limit: int = 100,
+    role: str = None,
+    current_user: UserInDB = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    List all users. Admin only.
+    
+    - **skip**: Number of users to skip
+    - **limit**: Max users to return
+    - **role**: Filter by role (user/admin)
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    role_filter = UserRole(role) if role else None
+    users = await user_repo.get_all(skip=skip, limit=limit, role=role_filter)
+    return users
+
+
+@router.patch("/admin/users/{user_id}/toggle-active", response_model=UserResponse)
+async def toggle_user_active(
+    user_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Toggle user active status. Admin only.
+    Cannot deactivate yourself.
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    if current_user.id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own account"
+        )
+    
+    user = await user_repo.get_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    if user.is_active:
+        await user_repo.deactivate(user_id)
+    else:
+        # Reactivate - need to add this method or use update
+        from app.schemas.user import UserUpdate
+        await user_repo.update(user_id, UserUpdate())
+        await user_repo.collection.update_one(
+            {"_id": user_id},
+            {"$set": {"is_active": True}}
+        )
+    
+    return await user_repo.get_by_id(user_id)

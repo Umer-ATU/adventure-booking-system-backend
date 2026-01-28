@@ -1,5 +1,8 @@
+"""
+Enhanced booking repository for database operations.
+"""
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -13,13 +16,29 @@ class BookingRepository:
     def __init__(self, database: AsyncIOMotorDatabase):
         self.collection = database.bookings
 
-    async def create(self, booking: BookingCreate) -> BookingInDB:
+    async def create(
+        self,
+        booking: BookingCreate,
+        user_id: Optional[str] = None,
+        adventure_id: Optional[str] = None
+    ) -> BookingInDB:
         """Create a new booking."""
         booking_dict = booking.model_dump()
         booking_dict["_id"] = str(ObjectId())
         booking_dict["status"] = BookingStatus.PENDING.value
         booking_dict["created_at"] = datetime.utcnow()
         booking_dict["updated_at"] = datetime.utcnow()
+        
+        # Enhanced fields
+        if user_id:
+            booking_dict["user_id"] = user_id
+        if adventure_id:
+            booking_dict["adventure_id"] = adventure_id
+        
+        # Payment fields
+        booking_dict["payment_status"] = "PENDING"
+        booking_dict["stripe_payment_id"] = None
+        booking_dict["invoice_number"] = f"INV-{datetime.utcnow().strftime('%Y%m%d')}-{booking_dict['_id'][:8].upper()}"
 
         await self.collection.insert_one(booking_dict)
         return BookingInDB(**booking_dict)
@@ -33,13 +52,52 @@ class BookingRepository:
             return BookingInDB(**booking)
         return None
 
-    async def get_all(self, skip: int = 0, limit: int = 100) -> List[BookingInDB]:
-        """Get all bookings with pagination."""
-        cursor = self.collection.find().skip(skip).limit(limit).sort("created_at", -1)
+    async def get_by_user(
+        self,
+        user_id: str,
+        skip: int = 0,
+        limit: int = 50,
+        status: Optional[BookingStatus] = None
+    ) -> List[BookingInDB]:
+        """Get bookings for a specific user."""
+        query: Dict[str, Any] = {"user_id": user_id}
+        if status:
+            query["status"] = status.value
+            
+        cursor = self.collection.find(query) \
+            .skip(skip) \
+            .limit(limit) \
+            .sort("created_at", -1)
         bookings = await cursor.to_list(length=limit)
         return [BookingInDB(**booking) for booking in bookings]
 
-    async def update(self, booking_id: str, booking_update: BookingUpdate) -> Optional[BookingInDB]:
+    async def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        status: Optional[BookingStatus] = None,
+        adventure_id: Optional[str] = None
+    ) -> tuple[List[BookingInDB], int]:
+        """Get all bookings with pagination and filters."""
+        query: Dict[str, Any] = {}
+        if status:
+            query["status"] = status.value
+        if adventure_id:
+            query["adventure_id"] = adventure_id
+            
+        total = await self.collection.count_documents(query)
+        cursor = self.collection.find(query) \
+            .skip(skip) \
+            .limit(limit) \
+            .sort("created_at", -1)
+        bookings = await cursor.to_list(length=limit)
+        return [BookingInDB(**booking) for booking in bookings], total
+
+    async def update(
+        self,
+        booking_id: str,
+        booking_update: BookingUpdate
+    ) -> Optional[BookingInDB]:
         """Update a booking (admin only)."""
         if not ObjectId.is_valid(booking_id):
             return None
@@ -50,15 +108,66 @@ class BookingRepository:
 
         update_data["updated_at"] = datetime.utcnow()
 
-        result = await self.collection.update_one(
+        await self.collection.update_one(
             {"_id": booking_id},
             {"$set": update_data}
         )
 
-        if result.modified_count == 0 and result.matched_count == 0:
-            return None
-
         return await self.get_by_id(booking_id)
+
+    async def update_payment_status(
+        self,
+        booking_id: str,
+        payment_status: str,
+        stripe_payment_id: Optional[str] = None
+    ) -> bool:
+        """Update payment status of a booking."""
+        update_data: Dict[str, Any] = {
+            "payment_status": payment_status,
+            "updated_at": datetime.utcnow()
+        }
+        if stripe_payment_id:
+            update_data["stripe_payment_id"] = stripe_payment_id
+            
+        result = await self.collection.update_one(
+            {"_id": booking_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+
+    async def confirm_booking(self, booking_id: str) -> bool:
+        """Confirm a booking (after payment)."""
+        result = await self.collection.update_one(
+            {"_id": booking_id},
+            {
+                "$set": {
+                    "status": BookingStatus.CONFIRMED.value,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
+
+    async def cancel_booking(
+        self,
+        booking_id: str,
+        cancelled_by: str,
+        reason: Optional[str] = None
+    ) -> bool:
+        """Cancel a booking."""
+        result = await self.collection.update_one(
+            {"_id": booking_id},
+            {
+                "$set": {
+                    "status": BookingStatus.CANCELLED.value,
+                    "cancelled_by": cancelled_by,
+                    "cancellation_reason": reason,
+                    "cancelled_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
 
     async def delete(self, booking_id: str) -> bool:
         """Delete a booking."""
@@ -67,6 +176,39 @@ class BookingRepository:
         result = await self.collection.delete_one({"_id": booking_id})
         return result.deleted_count > 0
 
-    async def count(self) -> int:
-        """Get total count of bookings."""
-        return await self.collection.count_documents({})
+    async def count(
+        self,
+        status: Optional[BookingStatus] = None,
+        user_id: Optional[str] = None
+    ) -> int:
+        """Get count of bookings."""
+        query: Dict[str, Any] = {}
+        if status:
+            query["status"] = status.value
+        if user_id:
+            query["user_id"] = user_id
+        return await self.collection.count_documents(query)
+
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get booking statistics for admin dashboard."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": "$status",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        status_counts = await self.collection.aggregate(pipeline).to_list(length=10)
+        
+        total = await self.collection.count_documents({})
+        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_count = await self.collection.count_documents(
+            {"created_at": {"$gte": today}}
+        )
+        
+        return {
+            "total": total,
+            "today": today_count,
+            "by_status": {item["_id"]: item["count"] for item in status_counts}
+        }
