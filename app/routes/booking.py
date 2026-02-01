@@ -13,9 +13,10 @@ from app.schemas.user import UserInDB, UserRole
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
-async def get_booking_repository() -> BookingRepository:
+async def get_booking_repository(
+    client: AsyncIOMotorClient = Depends(get_database)
+) -> BookingRepository:
     """Dependency to get booking repository."""
-    client = await get_database()
     database = client[settings.MONGODB_DB_NAME]
     return BookingRepository(database)
 
@@ -64,8 +65,8 @@ async def get_all_bookings(
             detail="Admin access required"
         )
 
-    bookings = await repo.get_all(skip=skip, limit=limit)
-    return bookings
+    bookings_list, total = await repo.get_all(skip=skip, limit=limit)
+    return bookings_list
 
 
 @router.get("/{booking_id}", response_model=BookingResponse)

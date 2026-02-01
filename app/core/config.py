@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Union
 
 from pydantic import AnyHttpUrl, field_validator
@@ -39,7 +40,9 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
 
     model_config = SettingsConfigDict(
-        env_file=".env", case_sensitive=True, extra="ignore"
+        env_file=f".env.{os.getenv('ENVIRONMENT', 'dev')}",
+        case_sensitive=True,
+        extra="ignore"
     )
 
 
