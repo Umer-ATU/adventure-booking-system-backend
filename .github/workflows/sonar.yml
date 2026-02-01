@@ -25,8 +25,11 @@ jobs:
 
       - name: Run Tests & Generate Coverage
         run: |
-          # Create a fake .env file for tests if needed
-          echo "ENVIRONMENT=dev" > .env
+          # Create a fake .env.dev file for tests (required by Settings validation)
+          echo "MONGODB_URL=mongodb://localhost:27017/testdb" > .env.dev
+          echo "SECRET_KEY=supersecretkeyfortesting" >> .env.dev
+          
+          # Set python path and run tests
           export PYTHONPATH=$PYTHONPATH:.
           pytest --cov=app --cov-report=xml tests/
 
