@@ -26,3 +26,9 @@ htmlcov/
 
 # MyPy
 .mypy_cache/
+
+# SonarQube & Coverage
+.scannerwork/
+.sonarqube/
+coverage.xml
+sonar-report.json

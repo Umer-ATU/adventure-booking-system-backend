@@ -62,6 +62,18 @@ export ENVIRONMENT=dev
 pytest -v tests/
 ```
 
+## SonarQube & CI/CD
+A `sonar-project.properties` file is included for code quality analysis.
+To run this in a CI/CD pipeline, ensure the following environment variables are set:
+- `SONAR_HOST_URL`: URL of your SonarQube server (e.g., `http://localhost:9000`)
+- `SONAR_TOKEN`: Authentication token from SonarQube (My Account > Security > Generate Tokens)
+
+**Local Analysis:**
+1. Start SonarQube: `docker-compose up -d sonarqube`
+2. Access at `http://localhost:9000` (Default: admin/admin)
+3. Run tests with coverage: `pytest --cov=app --cov-report=xml tests/`
+4. Run scanner (requires sonar-scanner CLI installed locally).
+
 ## Project Structure
 - `app/core`: Configuration, Database, Security, Dependency Injection
 - `app/models`: Database models
