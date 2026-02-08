@@ -78,12 +78,6 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 
 
-@app.get("/", tags=["Health"])
-async def root():
-    """Health check endpoint."""
-    return {"message": "Welcome to Wednesday's Wicked Adventures API", "status": "healthy"}
-
-
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Detailed health check."""
