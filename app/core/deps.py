@@ -19,16 +19,18 @@ from app.schemas.user import UserInDB, UserRole
 security = HTTPBearer(auto_error=False)
 
 
-async def get_user_repository() -> UserRepository:
+async def get_user_repository(
+    client: AsyncIOMotorClient = Depends(get_database)
+) -> UserRepository:
     """Get user repository instance."""
-    client = await get_database()
     database = client[settings.MONGODB_DB_NAME]
     return UserRepository(database)
 
 
-async def get_booking_repository() -> BookingRepository:
+async def get_booking_repository(
+    client: AsyncIOMotorClient = Depends(get_database)
+) -> BookingRepository:
     """Get booking repository instance."""
-    client = await get_database()
     database = client[settings.MONGODB_DB_NAME]
     return BookingRepository(database)
 
