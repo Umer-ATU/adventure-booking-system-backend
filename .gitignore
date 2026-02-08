@@ -27,8 +27,25 @@ htmlcov/
 # MyPy
 .mypy_cache/
 
-# SonarQube & Coverage
+# SonarQube
 .scannerwork/
-.sonarqube/
+.sonar/
+
+# Coverage reports (generated files)
 coverage.xml
-sonar-report.json
+*.cover
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development
+*.log
+*.pid
+*.seed
+
+# Temporary files
+tmp/
+temp/
+*.tmp
