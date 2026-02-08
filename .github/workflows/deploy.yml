@@ -94,25 +94,59 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
+            set -e
+            
+            echo "🔧 Checking and installing dependencies..."
+            
+            # Install Docker if not present
+            if ! command -v docker &> /dev/null; then
+              echo "📦 Installing Docker..."
+              sudo apt-get update
+              sudo apt-get install -y docker.io
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo usermod -aG docker $USER
+            fi
+            
+            # Install Docker Compose if not present
+            if ! command -v docker-compose &> /dev/null; then
+              echo "📦 Installing Docker Compose..."
+              sudo apt-get install -y docker-compose
+            fi
+            
+            # Clone repo if not present (use PAT for private repo)
+            if [ ! -d ~/adventure-booking-system-backend ]; then
+              echo "📥 Cloning repository..."
+              cd ~
+              git clone https://${{ secrets.GH_PAT }}@github.com/Umer-ATU/adventure-booking-system-backend.git
+            fi
+            
             cd ~/adventure-booking-system-backend
             
+            # Configure git to use PAT for this repo
+            git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/Umer-ATU/adventure-booking-system-backend.git
+            
             # Pull latest changes
+            echo "📥 Pulling latest changes..."
             git pull origin main
             
             # Create .env.prod file from secrets
+            echo "🔐 Creating environment file..."
             cat > .env.prod << EOF
             MONGODB_URL=${{ secrets.MONGODB_URL }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             MONGODB_DB_NAME=booking_system
             EOF
             
-            # Stop existing container
-            docker-compose down || true
+            # Stop existing container (use sudo for first run)
+            echo "🛑 Stopping existing containers..."
+            sudo docker-compose down || true
             
             # Rebuild and start
-            docker-compose up -d --build
+            echo "🚀 Building and starting containers..."
+            sudo docker-compose up -d --build
             
             # Clean up old images
-            docker image prune -f
+            sudo docker image prune -f
             
             echo "✅ Deployment completed successfully!"
