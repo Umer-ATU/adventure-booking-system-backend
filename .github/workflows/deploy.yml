@@ -99,6 +99,13 @@ jobs:
             # Pull latest changes
             git pull origin main
             
+            # Create .env.prod file from secrets
+            cat > .env.prod << EOF
+            MONGODB_URL=${{ secrets.MONGODB_URL }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            MONGODB_DB_NAME=booking_system
+            EOF
+            
             # Stop existing container
             docker-compose down || true
             

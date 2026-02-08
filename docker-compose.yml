@@ -3,9 +3,8 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
+    env_file:
+      - .env.prod
     environment:
-      - MONGODB_URL=${MONGODB_URL}
-      - MONGODB_DB_NAME=${DATABASE_NAME}
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ENVIRONMENT=prod
+    restart: unless-stopped
