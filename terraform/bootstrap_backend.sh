@@ -3,16 +3,20 @@ set -e
 
 # Creates an S3 bucket and DynamoDB table for Terraform state
 PROJECT_NAME="helena"
-REGION="eu-west-1"
+REGION="us-east-1"
 BUCKET_NAME="${PROJECT_NAME}-tfstate-$(openssl rand -hex 6)"
 TABLE_NAME="${PROJECT_NAME}-tfstate-lock"
 
 echo "Using region: $REGION"
 echo "Creating Terraform state bucket: $BUCKET_NAME"
-aws s3api create-bucket \
-    --bucket "$BUCKET_NAME" \
-    --region "$REGION" \
-    --create-bucket-configuration LocationConstraint="$REGION"
+if [ "$REGION" == "us-east-1" ]; then
+    aws s3api create-bucket --bucket "$BUCKET_NAME" --region "$REGION"
+else
+    aws s3api create-bucket \
+        --bucket "$BUCKET_NAME" \
+        --region "$REGION" \
+        --create-bucket-configuration LocationConstraint="$REGION"
+fi
 
 aws s3api put-bucket-versioning \
     --bucket "$BUCKET_NAME" \

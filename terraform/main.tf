@@ -13,9 +13,9 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "helena-tfstate-645836cb8391"
+    bucket         = "helena-tfstate-03342d8d696a"
     key            = "terraform.tfstate"
-    region         = "eu-west-1"
+    region         = "us-east-1"
     dynamodb_table = "helena-tfstate-lock"
     encrypt        = true
   }

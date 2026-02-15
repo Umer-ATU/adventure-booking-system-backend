@@ -83,6 +83,6 @@ async def health_check():
     """Detailed health check."""
     return {
         "status": "healthy",
-        "service": "Wednesday's Wicked Adventures API",
+        "service": "Adventure Booking System API",
         "version": "1.0.0"
     }
