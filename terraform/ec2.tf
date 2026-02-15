@@ -57,23 +57,11 @@ resource "aws_security_group" "backend" {
 }
 
 # ──────────────────────────────────────────────
-# SSH Key Pair (auto-generated)
+# SSH Key Pair (Manual)
 # ──────────────────────────────────────────────
-resource "tls_private_key" "ec2" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
 resource "aws_key_pair" "ec2" {
   key_name   = "${var.project_name}-key"
-  public_key = tls_private_key.ec2.public_key_openssh
-}
-
-# Save private key locally for SSH access
-resource "local_file" "private_key" {
-  content         = tls_private_key.ec2.private_key_pem
-  filename        = "${path.module}/${var.project_name}-key.pem"
-  file_permission = "0400"
+  public_key = var.public_key
 }
 
 # ──────────────────────────────────────────────

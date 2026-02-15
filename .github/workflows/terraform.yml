@@ -55,6 +55,7 @@ jobs:
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
           TF_VAR_backend_repo_url: "https://github.com/${{ github.repository }}.git"
           TF_VAR_frontend_bucket_name: "helena-adventure-frontend-${{ github.actor }}"
+          TF_VAR_public_key: ${{ secrets.TF_VAR_public_key }}
         run: terraform plan -input=false
 
       - name: Terraform Apply
@@ -67,6 +68,7 @@ jobs:
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
           TF_VAR_backend_repo_url: "https://github.com/${{ github.repository }}.git"
           TF_VAR_frontend_bucket_name: "helena-adventure-frontend-${{ github.actor }}"
+          TF_VAR_public_key: ${{ secrets.TF_VAR_public_key }}
         run: terraform apply -auto-approve -input=false
 
       - name: Terraform Destroy
@@ -79,4 +81,6 @@ jobs:
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
           TF_VAR_backend_repo_url: "https://github.com/${{ github.repository }}.git"
           TF_VAR_frontend_bucket_name: "helena-adventure-frontend-${{ github.actor }}"
+          # Public key not strictly needed for destroy, but good practice to keep env vars consistent
+          TF_VAR_public_key: ${{ secrets.TF_VAR_public_key }}
         run: terraform destroy -auto-approve -input=false

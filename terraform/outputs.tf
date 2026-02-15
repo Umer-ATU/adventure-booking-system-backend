@@ -39,7 +39,7 @@ output "cloudfront_distribution_id" {
 
 output "ssh_command" {
   description = "SSH command to connect to EC2"
-  value       = "ssh -i ${path.module}/${var.project_name}-key.pem ec2-user@${aws_eip.backend.public_ip}"
+  value       = "ssh -i /path/to/your/private-key-file.pem ec2-user@${aws_eip.backend.public_ip}"
 }
 
 output "frontend_deploy_command" {

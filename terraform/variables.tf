@@ -22,6 +22,11 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "public_key" {
+  description = "Public SSH key for EC2 instance access"
+  type        = string
+}
+
 variable "ssh_allowed_cidr" {
   description = "CIDR block allowed to SSH (use your IP, e.g. 1.2.3.4/32)"
   type        = string
