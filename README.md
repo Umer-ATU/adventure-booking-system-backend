@@ -10,6 +10,39 @@ Clean architecture FastAPI project with MongoDB.
 - **Testing** (Pytest coverage for Auth and Bookings)
 - **Docker & Docker Compose**
 
+## 🚀 DevOps Architecture
+
+This project uses a fully automated **CI/CD Pipeline** to deploy code to AWS.
+
+```mermaid
+graph TD;
+    User[Developer] -->|Push Code| Github[GitHub Repo];
+    Github -->|Triggers| CI[GitHub Actions];
+    
+    subgraph "CI/CD Pipeline"
+        CI -->|1. Test & Quality| Pytest[Pytest & SonarCloud];
+        Pytest -->|2. Build Docker| Docker[Docker Build];
+        Docker -->|3. Push Image| ECR[AWS ECR Private Registry];
+        ECR -->|4. Deploy via SSH| EC2[AWS EC2 Server];
+    end
+    
+    subgraph "AWS Infrastructure"
+        Terraform[Terraform] -->|Provisions| AWS_Infra[EC2, VPC, ECR, S3];
+        EC2 -->|Pulls Image| ECR;
+        EC2 -->|Exposes Port 80| Internet[Public Internet];
+    end
+```
+
+### How It Works
+1.  **Infrastructure as Code (Terraform)**: All AWS resources (Servers, Networks, Databases) are created automatically using Terraform code.
+2.  **Continuous Integration (CI)**:
+    *   Every push runs **Pytest** to ensure code works.
+    *   **SonarCloud** scans for code quality and bugs.
+3.  **Continuous Deployment (CD)**:
+    *   If tests pass, we build a **Docker Image**.
+    *   The image is pushed to **AWS ECR** (Amazon's Docker Registry).
+    *   We automatically SSH into the **EC2 Server**, pull the new image, and restart the app.
+
 ## Setup
 
 ### 1. Environment Variables
@@ -46,7 +79,7 @@ uvicorn app.main:app --reload
 2. Use the `/api/auth/register` endpoint to create a user.
 3. Use the `/api/auth/login` endpoint to get an `access_token`.
 4. Click the **Authorize** button at the top of the page.
-5. Paste your `access_token` into the box (value: `your_token_string`).
+5. Paste your `access_token` into the box.
 6. You can now access protected endpoints like `GET /api/bookings`.
 
 ## Testing
@@ -62,22 +95,9 @@ export ENVIRONMENT=dev
 pytest -v tests/
 ```
 
-## SonarQube & CI/CD
-A `sonar-project.properties` file is included for code quality analysis.
-To run this in a CI/CD pipeline, ensure the following environment variables are set:
-- `SONAR_HOST_URL`: URL of your SonarQube server (e.g., `http://localhost:9000`)
-- `SONAR_TOKEN`: Authentication token from SonarQube (My Account > Security > Generate Tokens)
-
-**Local Analysis:**
-1. Start SonarQube: `docker-compose up -d sonarqube`
-2. Access at `http://localhost:9000` (Default: admin/admin)
-3. Run tests with coverage: `pytest --cov=app --cov-report=xml tests/`
-4. Run scanner (requires sonar-scanner CLI installed locally).
-
 ## Project Structure
-- `app/core`: Configuration, Database, Security, Dependency Injection
+- `app/core`: Configuration, Database, Security
 - `app/models`: Database models
 - `app/schemas`: Pydantic data schemas
 - `app/routes`: API route handlers
-- `app/repositories`: Database access layer
 - `tests/`: Unit and integration tests
