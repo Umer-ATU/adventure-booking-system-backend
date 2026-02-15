@@ -16,7 +16,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 class CreatePaymentIntentRequest(BaseModel):
     """Request to create a payment intent."""
-    booking_id: str = Field(..., description="Booking ID to pay for")
+    adventure_id: str = Field(..., description="Adventure ID being booked")
     amount: int = Field(..., gt=0, description="Amount in cents")
     currency: str = Field("eur", description="Currency code")
 
@@ -39,12 +39,12 @@ class ConfirmPaymentRequest(BaseModel):
 async def create_payment_intent(
     request: CreatePaymentIntentRequest,
     current_user: UserInDB = Depends(get_current_user),
-    booking_repo: BookingRepository = Depends(get_booking_repository)
 ):
     """
-    Create a Stripe PaymentIntent for a booking.
+    Create a Stripe PaymentIntent before booking is created.
     
     This returns a client_secret that the frontend uses to complete payment.
+    The booking is only created after payment succeeds.
     """
     if not payment_service.is_configured():
         raise HTTPException(
@@ -52,20 +52,12 @@ async def create_payment_intent(
             detail="Payment service is not configured"
         )
 
-    # Verify booking exists and belongs to user
-    booking = await booking_repo.get_by_id(request.booking_id)
-    if not booking:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Booking not found"
-        )
-
     try:
         result = await payment_service.create_payment_intent(
             amount=request.amount,
             currency=request.currency,
             metadata={
-                "booking_id": request.booking_id,
+                "adventure_id": request.adventure_id,
                 "user_id": current_user.id,
             },
             customer_email=current_user.email,
@@ -182,8 +174,6 @@ async def stripe_webhook(
                 payment_status="PAID",
                 stripe_payment_id=payment_intent.id
             )
-            # Also confirm the booking
-            await booking_repo.confirm_booking(booking_id)
 
     elif event.type == "payment_intent.payment_failed":
         payment_intent = event.data.object

@@ -1,2 +1,2 @@
 from .ride import Ride
-from .booking import Booking, BookingStatus, UserDetails
+from .booking import Booking, UserDetails

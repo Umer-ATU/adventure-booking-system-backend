@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Optional
-from enum import Enum
 
 from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
@@ -21,11 +20,7 @@ class PyObjectId(str):
         raise ValueError("Invalid ObjectId")
 
 
-class BookingStatus(str, Enum):
-    """Booking status enum."""
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
+
 
 
 class BookingBase(BaseModel):
@@ -48,13 +43,15 @@ class BookingUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, min_length=10, max_length=20)
     adventure_park: Optional[str] = None
-    status: Optional[BookingStatus] = None
+    payment_status: Optional[str] = None
 
 
 class BookingInDB(BookingBase):
     """Schema for booking stored in database."""
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
-    status: BookingStatus = BookingStatus.PENDING
+    user_id: Optional[str] = None
+    payment_status: str = "PENDING"
+    invoice_number: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -66,7 +63,9 @@ class BookingInDB(BookingBase):
 class BookingResponse(BookingBase):
     """Schema for booking API response."""
     id: str = Field(..., alias="_id")
-    status: BookingStatus
+    user_id: Optional[str] = None
+    payment_status: str = "PENDING"
+    invoice_number: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,0 +1,10 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.pem
+# .terraform.lock.hcl should be committed!
+
+# Keep the example
+!terraform.tfvars.example

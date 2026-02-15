@@ -1,0 +1,22 @@
+# ──────────────────────────────────────────────
+# Copy this file to terraform.tfvars and fill in your values
+# ──────────────────────────────────────────────
+
+aws_region       = "us-east-1"
+project_name     = "helena"
+instance_type    = "t2.micro"
+ssh_allowed_cidr = "0.0.0.0/0"     # Restrict to your IP: "1.2.3.4/32"
+
+# Git repo (HTTPS clone URL)
+backend_repo_url = "https://github.com/<your-username>/adventure-booking-system-backend.git"
+
+# S3 bucket (must be globally unique)
+frontend_bucket_name = "helena-adventure-frontend"
+
+# Backend secrets
+mongodb_url            = "mongodb+srv://user:password@cluster.mongodb.net/"
+database_name          = "booking_system"
+secret_key             = "generate-with-openssl-rand-hex-32"
+stripe_secret_key      = "sk_test_..."
+stripe_publishable_key = "pk_test_..."
+stripe_webhook_secret  = "whsec_..."

@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
 
     model_config = SettingsConfigDict(
-        env_file=f".env.{os.getenv('ENVIRONMENT', 'dev')}",
+        env_file=(f".env.{os.getenv('ENVIRONMENT', 'dev')}", ".env.local"),
         case_sensitive=True,
         extra="ignore"
     )

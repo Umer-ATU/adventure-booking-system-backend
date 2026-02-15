@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.schemas.booking import BookingCreate, BookingUpdate, BookingInDB, BookingStatus
+from app.schemas.booking import BookingCreate, BookingUpdate, BookingInDB
 
 
 class BookingRepository:
@@ -25,7 +25,6 @@ class BookingRepository:
         """Create a new booking."""
         booking_dict = booking.model_dump()
         booking_dict["_id"] = str(ObjectId())
-        booking_dict["status"] = BookingStatus.PENDING.value
         booking_dict["created_at"] = datetime.utcnow()
         booking_dict["updated_at"] = datetime.utcnow()
         
@@ -57,12 +56,12 @@ class BookingRepository:
         user_id: str,
         skip: int = 0,
         limit: int = 50,
-        status: Optional[BookingStatus] = None
+        payment_status: Optional[str] = None
     ) -> List[BookingInDB]:
         """Get bookings for a specific user."""
         query: Dict[str, Any] = {"user_id": user_id}
-        if status:
-            query["status"] = status.value
+        if payment_status:
+            query["payment_status"] = payment_status
             
         cursor = self.collection.find(query) \
             .skip(skip) \
@@ -75,13 +74,13 @@ class BookingRepository:
         self,
         skip: int = 0,
         limit: int = 100,
-        status: Optional[BookingStatus] = None,
+        payment_status: Optional[str] = None,
         adventure_id: Optional[str] = None
     ) -> tuple[List[BookingInDB], int]:
         """Get all bookings with pagination and filters."""
         query: Dict[str, Any] = {}
-        if status:
-            query["status"] = status.value
+        if payment_status:
+            query["payment_status"] = payment_status
         if adventure_id:
             query["adventure_id"] = adventure_id
             
@@ -135,19 +134,6 @@ class BookingRepository:
         )
         return result.modified_count > 0
 
-    async def confirm_booking(self, booking_id: str) -> bool:
-        """Confirm a booking (after payment)."""
-        result = await self.collection.update_one(
-            {"_id": booking_id},
-            {
-                "$set": {
-                    "status": BookingStatus.CONFIRMED.value,
-                    "updated_at": datetime.utcnow()
-                }
-            }
-        )
-        return result.modified_count > 0
-
     async def cancel_booking(
         self,
         booking_id: str,
@@ -159,7 +145,7 @@ class BookingRepository:
             {"_id": booking_id},
             {
                 "$set": {
-                    "status": BookingStatus.CANCELLED.value,
+                    "payment_status": "CANCELLED",
                     "cancelled_by": cancelled_by,
                     "cancellation_reason": reason,
                     "cancelled_at": datetime.utcnow(),
@@ -178,13 +164,13 @@ class BookingRepository:
 
     async def count(
         self,
-        status: Optional[BookingStatus] = None,
+        payment_status: Optional[str] = None,
         user_id: Optional[str] = None
     ) -> int:
         """Get count of bookings."""
         query: Dict[str, Any] = {}
-        if status:
-            query["status"] = status.value
+        if payment_status:
+            query["payment_status"] = payment_status
         if user_id:
             query["user_id"] = user_id
         return await self.collection.count_documents(query)
@@ -194,7 +180,7 @@ class BookingRepository:
         pipeline = [
             {
                 "$group": {
-                    "_id": "$status",
+                    "_id": "$payment_status",
                     "count": {"$sum": 1}
                 }
             }

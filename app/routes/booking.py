@@ -42,7 +42,7 @@ async def create_booking(
             detail="You must acknowledge the health and safety warnings"
         )
 
-    result = await repo.create(booking)
+    result = await repo.create(booking, user_id=str(current_user.id))
     return result
 
 
@@ -66,6 +66,18 @@ async def get_all_bookings(
         )
 
     bookings_list, total = await repo.get_all(skip=skip, limit=limit)
+    return bookings_list
+
+
+@router.get("/my", response_model=List[BookingResponse])
+async def get_my_bookings(
+    repo: BookingRepository = Depends(get_booking_repository),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Get current user's bookings.
+    """
+    bookings_list = await repo.get_by_user(str(current_user.id))
     return bookings_list
 
 

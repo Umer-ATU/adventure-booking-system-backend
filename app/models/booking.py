@@ -1,16 +1,12 @@
 from datetime import datetime
 from typing import Optional
-from enum import Enum
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
-class BookingStatus(str, Enum):
-    PENDING = "PENDING"
-    CONFIRMED = "CONFIRMED"
-    CANCELLED = "CANCELLED"
+
 
 class UserDetails(BaseModel):
     full_name: str = Field(..., min_length=2)
@@ -24,7 +20,7 @@ class Booking(BaseModel):
     user_details: UserDetails
     seats_booked: int = Field(1, gt=0)
     total_price: float = Field(..., gt=0)
-    status: BookingStatus = Field(default=BookingStatus.PENDING)
+    payment_status: str = Field(default="PENDING")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     model_config = ConfigDict(
@@ -41,7 +37,7 @@ class Booking(BaseModel):
                 },
                 "seats_booked": 2,
                 "total_price": 100.0,
-                "status": "PENDING"
+                "payment_status": "PENDING"
             }
         }
     )

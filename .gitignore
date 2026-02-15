@@ -49,3 +49,10 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.pem
