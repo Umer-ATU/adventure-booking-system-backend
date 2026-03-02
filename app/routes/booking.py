@@ -7,6 +7,7 @@ from app.core.database import get_database
 from app.core.config import settings
 from app.schemas.booking import BookingCreate, BookingUpdate, BookingResponse
 from app.repositories.booking import BookingRepository
+from app.repositories.adventure import AdventureRepository
 from app.core.deps import get_current_user
 from app.schemas.user import UserInDB, UserRole
 
@@ -18,13 +19,23 @@ async def get_booking_repository(
 ) -> BookingRepository:
     """Dependency to get booking repository."""
     database = client[settings.MONGODB_DB_NAME]
+    database = client[settings.MONGODB_DB_NAME]
     return BookingRepository(database)
+
+
+async def get_adventure_repository(
+    client: AsyncIOMotorClient = Depends(get_database)
+) -> AdventureRepository:
+    """Dependency to get adventure repository."""
+    database = client[settings.MONGODB_DB_NAME]
+    return AdventureRepository(database)
 
 
 @router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking: BookingCreate,
     repo: BookingRepository = Depends(get_booking_repository),
+    adventure_repo: AdventureRepository = Depends(get_adventure_repository),
     current_user: UserInDB = Depends(get_current_user)
 ):
     """
@@ -42,7 +53,21 @@ async def create_booking(
             detail="You must acknowledge the health and safety warnings"
         )
 
-    result = await repo.create(booking, user_id=str(current_user.id))
+    # Fetch adventure details to get price
+    adventure = await adventure_repo.get_by_title(booking.adventure_park)
+    total_price = 50.0  # Default fallback if adventure not found
+    adventure_id = None
+
+    if adventure:
+        total_price = adventure.base_price
+        adventure_id = str(adventure.id)
+
+    result = await repo.create(
+        booking,
+        user_id=str(current_user.id),
+        adventure_id=adventure_id,
+        total_price=total_price
+    )
     return result
 
 

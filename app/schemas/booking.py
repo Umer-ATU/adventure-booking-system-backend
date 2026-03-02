@@ -50,6 +50,8 @@ class BookingInDB(BookingBase):
     """Schema for booking stored in database."""
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     user_id: Optional[str] = None
+    adventure_id: Optional[str] = None
+    total_price: Optional[float] = 0.0
     payment_status: str = "PENDING"
     invoice_number: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -64,6 +66,8 @@ class BookingResponse(BookingBase):
     """Schema for booking API response."""
     id: str = Field(..., alias="_id")
     user_id: Optional[str] = None
+    adventure_id: Optional[str] = None
+    total_price: float = 0.0
     payment_status: str = "PENDING"
     invoice_number: Optional[str] = None
     created_at: datetime
