@@ -46,6 +46,13 @@ class AdventureRepository:
             return AdventureInDB(**adventure)
         return None
 
+    async def get_by_title(self, title: str) -> Optional[AdventureInDB]:
+        """Get adventure by title (exact match)."""
+        adventure = await self.collection.find_one({"title": title})
+        if adventure:
+            return AdventureInDB(**adventure)
+        return None
+
     async def get_all(
         self,
         skip: int = 0,

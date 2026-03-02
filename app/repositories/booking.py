@@ -20,7 +20,8 @@ class BookingRepository:
         self,
         booking: BookingCreate,
         user_id: Optional[str] = None,
-        adventure_id: Optional[str] = None
+        adventure_id: Optional[str] = None,
+        total_price: Optional[float] = None
     ) -> BookingInDB:
         """Create a new booking."""
         booking_dict = booking.model_dump()
@@ -33,6 +34,8 @@ class BookingRepository:
             booking_dict["user_id"] = user_id
         if adventure_id:
             booking_dict["adventure_id"] = adventure_id
+        if total_price is not None:
+            booking_dict["total_price"] = total_price
         
         # Payment fields
         booking_dict["payment_status"] = "PENDING"
