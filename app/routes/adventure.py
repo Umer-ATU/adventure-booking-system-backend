@@ -5,6 +5,7 @@ from typing import Optional
 import math
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.core.database import get_database
@@ -23,9 +24,10 @@ from app.schemas.user import UserInDB
 router = APIRouter(prefix="/adventures", tags=["Adventures"])
 
 
-async def get_adventure_repository() -> AdventureRepository:
+async def get_adventure_repository(
+    client: AsyncIOMotorClient = Depends(get_database)
+) -> AdventureRepository:
     """Get adventure repository instance."""
-    client = await get_database()
     database = client[settings.MONGODB_DB_NAME]
     return AdventureRepository(database)
 
