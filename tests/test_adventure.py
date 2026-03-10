@@ -136,11 +136,11 @@ async def test_delete_adventure(async_client: AsyncClient, admin_token: str, adv
     adv_id = res_create.json()["_id"]
     
     response = await async_client.delete(
-        f"/adventures/{adv_id}",
+        f"/api/adventures/{adv_id}",
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 204
     
     # Check it's gone
-    res_get = await async_client.get(f"/adventures/{adv_id}")
+    res_get = await async_client.get(f"/api/adventures/{adv_id}")
     assert res_get.status_code == 404

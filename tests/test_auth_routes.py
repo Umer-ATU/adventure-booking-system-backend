@@ -1,48 +1,75 @@
 import pytest
 from httpx import AsyncClient
-from app.schemas.user import UserCreate
+
 
 @pytest.fixture
 def test_reg_user():
     return {
-        "email": "newuser@example.com",
+        "email": "brandnewuser@example.com",
         "password": "Password123!",
         "full_name": "New User"
     }
 
+
 @pytest.mark.asyncio
 async def test_register_user_success(async_client: AsyncClient, test_reg_user):
+    """Register a brand-new user — should return 201."""
     response = await async_client.post("/api/auth/register", json=test_reg_user)
     assert response.status_code == 201
-    assert "id" in response.json() or "_id" in response.json()
+    data = response.json()
+    # The response uses alias _id or a mapped id field
+    assert data.get("email") == test_reg_user["email"]
+
 
 @pytest.mark.asyncio
-async def test_register_user_duplicate(async_client: AsyncClient, test_user_data):
-    # This user is already created via fixture in conftest? Let's assume so or register again
-    response = await async_client.post("/api/auth/register", json=test_user_data)
-    # The first time it might succeed if not initialized before, but we are running after auth token has inserted it
+async def test_register_user_duplicate(async_client: AsyncClient, test_reg_user):
+    """Registering the same email twice should return 400."""
+    # First registration
+    await async_client.post("/api/auth/register", json=test_reg_user)
+    # Second registration with same email
+    response = await async_client.post("/api/auth/register", json=test_reg_user)
     assert response.status_code == 400
 
-@pytest.mark.asyncio
-async def test_login_user_success(async_client: AsyncClient, test_user_data, user_token):
-    # Depending on DB state, the user is already there due to user_token fixture logic
-    response = await async_client.post("/api/auth/login", data={
-        "username": test_user_data["email"],
-        "password": "hashed_password_123" # mock client uses dummy hashes in conftest
-    })
-    # Since mock uses dummy hash, the auth logic might fail bcrypt check, so maybe hit 401
-    assert response.status_code in [200, 401]
 
 @pytest.mark.asyncio
-async def test_login_user_invalid(async_client: AsyncClient):
-    response = await async_client.post("/api/auth/login", data={
-        "username": "nonexistent@example.com",
-        "password": "wrong"
+async def test_login_valid_credentials(async_client: AsyncClient, test_reg_user):
+    """After registering, login with correct creds returns a token."""
+    await async_client.post("/api/auth/register", json=test_reg_user)
+
+    response = await async_client.post("/api/auth/login", json={
+        "email": test_reg_user["email"],
+        "password": test_reg_user["password"]
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_login_invalid_credentials(async_client: AsyncClient):
+    """Login with wrong email/password returns 401."""
+    response = await async_client.post("/api/auth/login", json={
+        "email": "nobody@example.com",
+        "password": "WrongPassword1!"
     })
     assert response.status_code == 401
 
+
 @pytest.mark.asyncio
-async def test_forgot_password(async_client: AsyncClient, test_user_data, user_token):
-    response = await async_client.post("/api/auth/forgot-password", json={"email": test_user_data["email"]})
+async def test_get_current_user_profile(async_client: AsyncClient, user_token: str):
+    """Authenticated GET /auth/me returns 200 with user data."""
+    response = await async_client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {user_token}"}
+    )
     assert response.status_code == 200
-    assert "message" in response.json()
+    data = response.json()
+    assert "email" in data
+
+
+@pytest.mark.asyncio
+async def test_get_profile_unauthorized(async_client: AsyncClient):
+    """GET /auth/me without token returns 401."""
+    response = await async_client.get("/api/auth/me")
+    assert response.status_code == 401
