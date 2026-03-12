@@ -8,7 +8,7 @@ on:
     paths:
       - 'terraform/**'
 
-  # Manual trigger: apply OR destroy
+  # Manual trigger: apply, plan-only, or destroy
   workflow_dispatch:
     inputs:
       action:
@@ -18,18 +18,26 @@ on:
         type: choice
         options:
           - apply
-          - destroy
           - plan-only
+          - destroy
 
 jobs:
   terraform:
     name: Terraform ${{ github.event.inputs.action || 'apply' }}
     runs-on: ubuntu-latest
-    environment: production
 
     defaults:
       run:
         working-directory: terraform
+
+    env:
+      TF_VAR_FILE: |
+        -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}"
+        -var="mongodb_url=${{ secrets.MONGODB_URL }}"
+        -var="secret_key=${{ secrets.SECRET_KEY }}"
+        -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}"
+        -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
+        -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
     steps:
       - name: Checkout code
@@ -47,43 +55,22 @@ jobs:
         with:
           terraform_version: '~1.7'
 
-      # ── Check if state backend exists ─────────────────────────────────────
-      # The S3 bucket and DynamoDB table must exist before `terraform init`.
-      # If they don't, run bootstrap_backend.sh first (manual one-time step).
-      - name: Verify S3 state backend exists
+      - name: Determine action
+        id: action
         run: |
-          aws s3api head-bucket --bucket helena-tfstate-80f74c9f5372 2>/dev/null \
-            && echo "✅ State bucket found" \
-            || (echo "❌ State bucket not found — run bootstrap_backend.sh first" && exit 1)
+          # Default to 'apply' for push events, otherwise use the input
+          ACTION="${{ github.event.inputs.action || 'apply' }}"
+          echo "action=$ACTION" >> $GITHUB_OUTPUT
+          echo "🎯 Terraform action: $ACTION"
 
       - name: Terraform Init
         run: terraform init
 
-      # ── Check if infra already exists (idempotency check) ──────────────────
-      # We check if the ECR repo already exists. If ALL resources are present,
-      # we skip apply unless forced via workflow_dispatch.
-      - name: Check if infra is already applied
-        id: check_infra
-        run: |
-          ECR_EXISTS=$(aws ecr describe-repositories --repository-names helena-backend \
-            --query 'repositories[0].repositoryName' --output text 2>/dev/null || echo "NOT_FOUND")
-          
-          EC2_EXISTS=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=helena-backend" "Name=instance-state-name,Values=running,stopped" \
-            --query "Reservations[0].Instances[0].InstanceId" --output text 2>/dev/null || echo "None")
-
-          echo "ecr_exists=$ECR_EXISTS" >> $GITHUB_OUTPUT
-          echo "ec2_exists=$EC2_EXISTS" >> $GITHUB_OUTPUT
-
-          if [[ "$ECR_EXISTS" == "helena-backend" && "$EC2_EXISTS" != "None" && "$EC2_EXISTS" != "" ]]; then
-            echo "infra_ready=true" >> $GITHUB_OUTPUT
-            echo "✅ Infrastructure already exists — skipping apply on auto-trigger"
-          else
-            echo "infra_ready=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Infrastructure not fully deployed — will apply"
-          fi
-
+      # ────────────────────────────────────────────────────────────
+      # PLAN (for apply or plan-only)
+      # ────────────────────────────────────────────────────────────
       - name: Terraform Plan
+        if: steps.action.outputs.action != 'destroy'
         run: |
           terraform plan \
             -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
@@ -94,16 +81,32 @@ jobs:
             -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
             -out=tfplan
 
-      # ── Apply: runs if infra doesn't exist yet, OR if manually triggered ───
+      # ────────────────────────────────────────────────────────────
+      # APPLY (only on 'apply' or auto push)
+      # ────────────────────────────────────────────────────────────
       - name: Terraform Apply
-        if: |
-          steps.check_infra.outputs.infra_ready == 'false' ||
-          github.event.inputs.action == 'apply'
+        if: steps.action.outputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
-      # ── Destroy: ONLY via manual workflow_dispatch with action=destroy ──────
+      # ────────────────────────────────────────────────────────────
+      # DESTROY PLAN (show what will be destroyed before doing it)
+      # ────────────────────────────────────────────────────────────
+      - name: Terraform Destroy Plan
+        if: steps.action.outputs.action == 'destroy'
+        run: |
+          terraform plan -destroy \
+            -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
+            -var="mongodb_url=${{ secrets.MONGODB_URL }}" \
+            -var="secret_key=${{ secrets.SECRET_KEY }}" \
+            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}" \
+            -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
+            -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+
+      # ────────────────────────────────────────────────────────────
+      # DESTROY (manual only — never auto-triggered)
+      # ────────────────────────────────────────────────────────────
       - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
+        if: steps.action.outputs.action == 'destroy'
         run: |
           terraform destroy -auto-approve \
             -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
@@ -113,8 +116,10 @@ jobs:
             -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
             -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
-      # ── Output the key values after apply ─────────────────────────────────
+      # ────────────────────────────────────────────────────────────
+      # OUTPUTS (after apply, not after destroy)
+      # ────────────────────────────────────────────────────────────
       - name: Show Terraform Outputs
-        if: github.event.inputs.action != 'destroy'
+        if: steps.action.outputs.action == 'apply'
         run: terraform output
         continue-on-error: true
