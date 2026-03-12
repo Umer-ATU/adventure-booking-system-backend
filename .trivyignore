@@ -1,0 +1,15 @@
+# .trivyignore - Suppress CVEs that cannot be fixed by the application
+#
+# These CVEs are in packages VENDORED INSIDE setuptools (setuptools/_vendor/).
+# They are not directly installable or controllable via requirements.txt.
+# The fix requires a newer setuptools release baked into the base Docker image.
+#
+# CVE-2026-23949: jaraco.context vendored in setuptools 79.0.1; fixed in setuptools >= TBD
+CVE-2026-23949
+#
+# CVE-2026-24049: wheel vendored in setuptools 79.0.1; fixed in setuptools >= TBD
+CVE-2026-24049
+#
+# CVE-2026-24486: python-multipart path traversal; fix version (0.0.22) not yet published on PyPI
+# Remove this entry once 0.0.22 is released and requirements.txt is updated
+CVE-2026-24486
