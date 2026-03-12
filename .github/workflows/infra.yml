@@ -1,14 +1,7 @@
 name: Terraform Infrastructure
 
 on:
-  # Auto-apply when terraform files change on main
-  push:
-    branches:
-      - main
-    paths:
-      - 'terraform/**'
-
-  # Manual trigger: apply, plan-only, or destroy
+  # Manual trigger only — apply, plan-only, or destroy
   workflow_dispatch:
     inputs:
       action:
