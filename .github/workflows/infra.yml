@@ -14,6 +14,17 @@ on:
           - plan-only
           - destroy
 
+env:
+  # All Terraform variables that don't have defaults in variables.tf
+  # backend_repo_url is not a secret, so we hardcode it here
+  TF_VAR_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
+  TF_VAR_backend_repo_url: "https://github.com/Umer-ATU/adventure-booking-system-backend.git"
+  TF_VAR_mongodb_url: ${{ secrets.MONGODB_URL }}
+  TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
+  TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+  TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+  TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+
 jobs:
   terraform:
     name: Terraform ${{ github.event.inputs.action || 'apply' }}
@@ -22,15 +33,6 @@ jobs:
     defaults:
       run:
         working-directory: terraform
-
-    env:
-      TF_VAR_FILE: |
-        -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}"
-        -var="mongodb_url=${{ secrets.MONGODB_URL }}"
-        -var="secret_key=${{ secrets.SECRET_KEY }}"
-        -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}"
-        -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
-        -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
     steps:
       - name: Checkout code
@@ -51,7 +53,6 @@ jobs:
       - name: Determine action
         id: action
         run: |
-          # Default to 'apply' for push events, otherwise use the input
           ACTION="${{ github.event.inputs.action || 'apply' }}"
           echo "action=$ACTION" >> $GITHUB_OUTPUT
           echo "🎯 Terraform action: $ACTION"
@@ -59,59 +60,27 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      # ────────────────────────────────────────────────────────────
-      # PLAN (for apply or plan-only)
-      # ────────────────────────────────────────────────────────────
+      # ── PLAN (for apply or plan-only) ──────────────────────────
       - name: Terraform Plan
         if: steps.action.outputs.action != 'destroy'
-        run: |
-          terraform plan \
-            -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
-            -var="mongodb_url=${{ secrets.MONGODB_URL }}" \
-            -var="secret_key=${{ secrets.SECRET_KEY }}" \
-            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}" \
-            -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
-            -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
-            -out=tfplan
+        run: terraform plan -out=tfplan
 
-      # ────────────────────────────────────────────────────────────
-      # APPLY (only on 'apply' or auto push)
-      # ────────────────────────────────────────────────────────────
+      # ── APPLY ──────────────────────────────────────────────────
       - name: Terraform Apply
         if: steps.action.outputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
-      # ────────────────────────────────────────────────────────────
-      # DESTROY PLAN (show what will be destroyed before doing it)
-      # ────────────────────────────────────────────────────────────
+      # ── DESTROY PLAN ───────────────────────────────────────────
       - name: Terraform Destroy Plan
         if: steps.action.outputs.action == 'destroy'
-        run: |
-          terraform plan -destroy \
-            -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
-            -var="mongodb_url=${{ secrets.MONGODB_URL }}" \
-            -var="secret_key=${{ secrets.SECRET_KEY }}" \
-            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}" \
-            -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
-            -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+        run: terraform plan -destroy
 
-      # ────────────────────────────────────────────────────────────
-      # DESTROY (manual only — never auto-triggered)
-      # ────────────────────────────────────────────────────────────
+      # ── DESTROY ────────────────────────────────────────────────
       - name: Terraform Destroy
         if: steps.action.outputs.action == 'destroy'
-        run: |
-          terraform destroy -auto-approve \
-            -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
-            -var="mongodb_url=${{ secrets.MONGODB_URL }}" \
-            -var="secret_key=${{ secrets.SECRET_KEY }}" \
-            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}" \
-            -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
-            -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+        run: terraform destroy -auto-approve
 
-      # ────────────────────────────────────────────────────────────
-      # OUTPUTS (after apply, not after destroy)
-      # ────────────────────────────────────────────────────────────
+      # ── OUTPUTS ────────────────────────────────────────────────
       - name: Show Terraform Outputs
         if: steps.action.outputs.action == 'apply'
         run: terraform output
