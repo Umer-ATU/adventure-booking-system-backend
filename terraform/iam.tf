@@ -18,8 +18,10 @@ resource "aws_iam_role" "ec2_role" {
   })
 
   tags = {
-    Name    = "${var.project_name}-ec2-role"
-    Project = var.project_name
+    Name        = "${var.project_name}-ec2-role"
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }
 

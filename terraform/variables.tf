@@ -13,6 +13,13 @@ variable "project_name" {
   default     = "helena"
 }
 
+variable "environment" {
+  description = "Deployment environment (e.g. production, staging)"
+  type        = string
+  default     = "production"
+}
+
+
 # ──────────────────────────────────────────────
 # EC2 / Backend
 # ──────────────────────────────────────────────

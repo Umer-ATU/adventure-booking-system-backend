@@ -11,8 +11,10 @@ resource "aws_ecr_repository" "backend" {
   }
 
   tags = {
-    Name    = "${var.project_name}-backend-ecr"
-    Project = var.project_name
+    Name        = "${var.project_name}-backend-ecr"
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }
 

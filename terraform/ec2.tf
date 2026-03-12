@@ -51,8 +51,10 @@ resource "aws_security_group" "backend" {
   }
 
   tags = {
-    Name    = "${var.project_name}-backend-sg"
-    Project = var.project_name
+    Name        = "${var.project_name}-backend-sg"
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }
 
@@ -105,8 +107,10 @@ resource "aws_instance" "backend" {
   }
 
   tags = {
-    Name    = "${var.project_name}-backend"
-    Project = var.project_name
+    Name        = "${var.project_name}-backend"
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }
 
@@ -118,7 +122,9 @@ resource "aws_eip" "backend" {
   domain   = "vpc"
 
   tags = {
-    Name    = "${var.project_name}-backend-eip"
-    Project = var.project_name
+    Name        = "${var.project_name}-backend-eip"
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }

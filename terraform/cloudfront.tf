@@ -69,7 +69,9 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   tags = {
-    Name    = "${var.project_name}-frontend-cdn"
-    Project = var.project_name
+    Name        = "${var.project_name}-frontend-cdn"
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
   }
 }

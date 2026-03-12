@@ -1,0 +1,120 @@
+name: Terraform Infrastructure
+
+on:
+  # Auto-apply when terraform files change on main
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+
+  # Manual trigger: apply OR destroy
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to run'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+          - plan-only
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action || 'apply' }}
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~1.7'
+
+      # ── Check if state backend exists ─────────────────────────────────────
+      # The S3 bucket and DynamoDB table must exist before `terraform init`.
+      # If they don't, run bootstrap_backend.sh first (manual one-time step).
+      - name: Verify S3 state backend exists
+        run: |
+          aws s3api head-bucket --bucket helena-tfstate-80f74c9f5372 2>/dev/null \
+            && echo "✅ State bucket found" \
+            || (echo "❌ State bucket not found — run bootstrap_backend.sh first" && exit 1)
+
+      - name: Terraform Init
+        run: terraform init
+
+      # ── Check if infra already exists (idempotency check) ──────────────────
+      # We check if the ECR repo already exists. If ALL resources are present,
+      # we skip apply unless forced via workflow_dispatch.
+      - name: Check if infra is already applied
+        id: check_infra
+        run: |
+          ECR_EXISTS=$(aws ecr describe-repositories --repository-names helena-backend \
+            --query 'repositories[0].repositoryName' --output text 2>/dev/null || echo "NOT_FOUND")
+          
+          EC2_EXISTS=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=helena-backend" "Name=instance-state-name,Values=running,stopped" \
+            --query "Reservations[0].Instances[0].InstanceId" --output text 2>/dev/null || echo "None")
+
+          echo "ecr_exists=$ECR_EXISTS" >> $GITHUB_OUTPUT
+          echo "ec2_exists=$EC2_EXISTS" >> $GITHUB_OUTPUT
+
+          if [[ "$ECR_EXISTS" == "helena-backend" && "$EC2_EXISTS" != "None" && "$EC2_EXISTS" != "" ]]; then
+            echo "infra_ready=true" >> $GITHUB_OUTPUT
+            echo "✅ Infrastructure already exists — skipping apply on auto-trigger"
+          else
+            echo "infra_ready=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Infrastructure not fully deployed — will apply"
+          fi
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
+            -var="mongodb_url=${{ secrets.MONGODB_URL }}" \
+            -var="secret_key=${{ secrets.SECRET_KEY }}" \
+            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}" \
+            -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
+            -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
+            -out=tfplan
+
+      # ── Apply: runs if infra doesn't exist yet, OR if manually triggered ───
+      - name: Terraform Apply
+        if: |
+          steps.check_infra.outputs.infra_ready == 'false' ||
+          github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+      # ── Destroy: ONLY via manual workflow_dispatch with action=destroy ──────
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          terraform destroy -auto-approve \
+            -var="public_key=${{ secrets.EC2_PUBLIC_KEY }}" \
+            -var="mongodb_url=${{ secrets.MONGODB_URL }}" \
+            -var="secret_key=${{ secrets.SECRET_KEY }}" \
+            -var="stripe_secret_key=${{ secrets.STRIPE_SECRET_KEY }}" \
+            -var="stripe_publishable_key=${{ secrets.STRIPE_PUBLISHABLE_KEY }}" \
+            -var="stripe_webhook_secret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+
+      # ── Output the key values after apply ─────────────────────────────────
+      - name: Show Terraform Outputs
+        if: github.event.inputs.action != 'destroy'
+        run: terraform output
+        continue-on-error: true
