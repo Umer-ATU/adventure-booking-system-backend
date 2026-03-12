@@ -134,13 +134,11 @@ jobs:
 
       - name: Pull image and run temporary container
         env:
-          IMAGE_URI: ${{ needs.build_and_push.outputs.image_uri }}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: helena-backend
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Validate IMAGE_URI is set
-          if [ -z "$IMAGE_URI" ]; then
-            echo "❌ IMAGE_URI is empty — build_and_push may have failed"
-            exit 1
-          fi
+          IMAGE_URI="$REGISTRY/$REPOSITORY:$IMAGE_TAG"
           echo "Using image: $IMAGE_URI"
           
           docker network create app-network
