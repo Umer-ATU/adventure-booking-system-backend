@@ -200,19 +200,23 @@ jobs:
         env:
           IMAGE_URI: ${{ needs.build_and_push.outputs.image_uri }}
           REGISTRY: ${{ needs.build_and_push.outputs.registry }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          MONGODB_URL: ${{ secrets.MONGODB_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         with:
           host: ${{ env.EC2_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          envs: IMAGE_URI,REGISTRY
+          envs: IMAGE_URI,REGISTRY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,MONGODB_URL,SECRET_KEY
           script: |
             # Login to ECR on EC2
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY
-            
-            # Create minimal docker-compose.yml on EC2
-            cat << EOF > ~/docker-compose.yml
-            version: '3.8'
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
+
+            # Write compose file — no escaping, variables resolved on EC2
+            cat > ~/docker-compose.yml << EOF
             services:
               redis:
                 image: redis:latest
@@ -222,14 +226,14 @@ jobs:
                   - app-network
 
               backend:
-                image: \${IMAGE_URI}
+                image: ${IMAGE_URI}
                 container_name: backend
                 restart: always
                 ports:
                   - "80:8000"
                 environment:
-                  - MONGODB_URL=\${MONGODB_URL}
-                  - SECRET_KEY=\${SECRET_KEY}
+                  - MONGODB_URL=${MONGODB_URL}
+                  - SECRET_KEY=${SECRET_KEY}
                   - REDIS_URL=redis://redis:6379
                   - PROJECT_NAME=Helena Adventure (Prod)
                   - DATABASE_NAME=booking_system
@@ -242,17 +246,7 @@ jobs:
               app-network:
                 driver: bridge
             EOF
-            
-            # Export secrets for docker-compose
-            export MONGODB_URL="${{ secrets.MONGODB_URL }}"
-            export SECRET_KEY="${{ secrets.SECRET_KEY }}"
-            export IMAGE_URI=$IMAGE_URI
-            
-            # Pull new image and restart services
+
             docker-compose pull backend
             docker-compose up -d
-            
-            # Prune old images
             docker image prune -a -f
-
-
