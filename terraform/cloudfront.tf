@@ -135,8 +135,8 @@ resource "aws_cloudfront_distribution" "frontend" {
   # Use all edge locations (Price Class 100 = cheapest)
   price_class = "PriceClass_100"
 
-  # Optional Custom Domain Alias
-  aliases = var.custom_domain_name != "" ? [var.custom_domain_name] : []
+  # Optional Custom Domain Aliases
+  aliases = compact([var.custom_domain_name, var.api_custom_domain_name])
 
   restrictions {
     geo_restriction {

@@ -9,12 +9,13 @@ output "ec2_public_ip" {
 
 output "backend_url" {
   description = "Backend API URL"
-  value       = "http://${aws_eip.backend.public_ip}:8000"
+  # If an API custom domain is provided, output that. Else output the EC2 IP.
+  value       = var.api_custom_domain_name != "" ? "https://${var.api_custom_domain_name}/api" : "http://${aws_eip.backend.public_ip}:8000"
 }
 
 output "backend_docs_url" {
   description = "Backend Swagger docs URL"
-  value       = "http://${aws_eip.backend.public_ip}:8000/docs"
+  value       = var.api_custom_domain_name != "" ? "https://${var.api_custom_domain_name}/docs" : "http://${aws_eip.backend.public_ip}:8000/docs"
 }
 
 output "s3_bucket_name" {

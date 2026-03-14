@@ -102,6 +102,12 @@ variable "custom_domain_name" {
   default     = ""
 }
 
+variable "api_custom_domain_name" {
+  description = "Custom domain name for the backend API (e.g. api.adventure.umer-karachiwala.com). Leave empty to use default CloudFront domain."
+  type        = string
+  default     = ""
+}
+
 variable "acm_certificate_arn" {
   description = "ARN of the ACM certificate for the custom domain (must be in us-east-1). Required if custom_domain_name is provided."
   type        = string
