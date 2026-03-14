@@ -270,6 +270,7 @@ jobs:
       - name: Trigger Lambda Function
         run: |
           aws lambda invoke --function-name PostDeployNotifications \
+            --cli-binary-format raw-in-base64-out \
             --payload '{"status": "success", "service": "backend"}' \
             response.json
           cat response.json
