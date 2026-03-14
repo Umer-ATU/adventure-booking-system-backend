@@ -29,7 +29,12 @@ output "s3_website_url" {
 
 output "cloudfront_domain" {
   description = "CloudFront distribution domain (your frontend URL)"
-  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  value       = var.custom_domain_name != "" ? "https://${var.custom_domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "cloudfront_default_domain" {
+  description = "The default CloudFront distribution domain (useful for testing or DNS aliases)"
+  value       = aws_cloudfront_distribution.frontend.domain_name
 }
 
 output "cloudfront_distribution_id" {

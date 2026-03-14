@@ -135,6 +135,9 @@ resource "aws_cloudfront_distribution" "frontend" {
   # Use all edge locations (Price Class 100 = cheapest)
   price_class = "PriceClass_100"
 
+  # Optional Custom Domain Alias
+  aliases = var.custom_domain_name != "" ? [var.custom_domain_name] : []
+
   restrictions {
     geo_restriction {
       restriction_type = "none"
@@ -142,7 +145,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.acm_certificate_arn == ""
+    acm_certificate_arn            = var.acm_certificate_arn != "" ? var.acm_certificate_arn : null
+    ssl_support_method             = var.acm_certificate_arn != "" ? "sni-only" : null
+    minimum_protocol_version       = var.acm_certificate_arn != "" ? "TLSv1.2_2021" : null
   }
 
   tags = {

@@ -92,3 +92,18 @@ variable "frontend_bucket_name" {
   type        = string
   default     = "helena-adventure-frontend"
 }
+
+# ──────────────────────────────────────────────
+# Custom Domain (Optional)
+# ──────────────────────────────────────────────
+variable "custom_domain_name" {
+  description = "Custom domain name (e.g. helena.umer-karachiwala.xyz). Leave empty to use default CloudFront domain."
+  type        = string
+  default     = ""
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for the custom domain (must be in us-east-1). Required if custom_domain_name is provided."
+  type        = string
+  default     = ""
+}
