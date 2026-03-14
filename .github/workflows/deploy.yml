@@ -211,7 +211,7 @@ jobs:
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY
             
             # Create minimal docker-compose.yml on EC2
-            cat << 'EOF' > ~/docker-compose.yml
+            cat << EOF > ~/docker-compose.yml
             version: '3.8'
             services:
               redis:
