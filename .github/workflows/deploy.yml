@@ -255,22 +255,4 @@ jobs:
             # Prune old images
             docker image prune -a -f
 
-  post_deploy:
-    name: Post Deploy Tasks
-    runs-on: ubuntu-latest
-    needs: deploy
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Trigger Lambda Function
-        run: |
-          aws lambda invoke --function-name PostDeployNotifications \
-            --cli-binary-format raw-in-base64-out \
-            --payload '{"status": "success", "service": "backend"}' \
-            response.json
-          cat response.json
