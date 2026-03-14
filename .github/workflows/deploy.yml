@@ -215,8 +215,8 @@ jobs:
             # Login to ECR on EC2
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
 
-            # Write compose file — no escaping, variables resolved on EC2
-            cat > ~/docker-compose.yml << EOF
+            # Write compose template (escaped EOF so bash doesn't touch it yet)
+            cat << 'EOF' > ~/docker-compose.yml
             services:
               redis:
                 image: redis:latest
@@ -226,14 +226,14 @@ jobs:
                   - app-network
 
               backend:
-                image: ${IMAGE_URI}
+                image: __IMAGE_URI__
                 container_name: backend
                 restart: always
                 ports:
                   - "80:8000"
                 environment:
-                  - MONGODB_URL=${MONGODB_URL}
-                  - SECRET_KEY=${SECRET_KEY}
+                  - MONGODB_URL=__MONGODB_URL__
+                  - SECRET_KEY=__SECRET_KEY__
                   - REDIS_URL=redis://redis:6379
                   - PROJECT_NAME=Helena Adventure (Prod)
                   - DATABASE_NAME=booking_system
@@ -246,6 +246,11 @@ jobs:
               app-network:
                 driver: bridge
             EOF
+
+            # Substitute placeholders with actual environment variables passed via SSH action
+            sed -i "s|__IMAGE_URI__|$IMAGE_URI|g" ~/docker-compose.yml
+            sed -i "s|__MONGODB_URL__|$MONGODB_URL|g" ~/docker-compose.yml
+            sed -i "s|__SECRET_KEY__|$SECRET_KEY|g" ~/docker-compose.yml
 
             docker-compose pull backend
             docker-compose up -d
