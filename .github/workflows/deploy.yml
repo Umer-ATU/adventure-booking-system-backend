@@ -222,14 +222,14 @@ jobs:
                   - app-network
 
               backend:
-                image: ${IMAGE_URI}
+                image: \${IMAGE_URI}
                 container_name: backend
                 restart: always
                 ports:
                   - "80:8000"
                 environment:
-                  - MONGODB_URL=${MONGODB_URL}
-                  - SECRET_KEY=${SECRET_KEY}
+                  - MONGODB_URL=\${MONGODB_URL}
+                  - SECRET_KEY=\${SECRET_KEY}
                   - REDIS_URL=redis://redis:6379
                   - PROJECT_NAME=Helena Adventure (Prod)
                   - DATABASE_NAME=booking_system
