@@ -197,25 +197,11 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          IMAGE_URI: ${{ needs.build_and_push.outputs.image_uri }}
-          REGISTRY: ${{ needs.build_and_push.outputs.registry }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          MONGODB_URL: ${{ secrets.MONGODB_URL }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        with:
-          host: ${{ env.EC2_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          envs: IMAGE_URI,REGISTRY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,MONGODB_URL,SECRET_KEY
           script: |
             # Login to ECR on EC2
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ needs.build_and_push.outputs.registry }}
 
-            # Write compose template (escaped EOF so bash doesn't touch it yet)
+            # Write compose file with GitHub Actions interpolation
             cat << 'EOF' > ~/docker-compose.yml
             services:
               redis:
@@ -226,14 +212,14 @@ jobs:
                   - app-network
 
               backend:
-                image: __IMAGE_URI__
+                image: ${{ needs.build_and_push.outputs.image_uri }}
                 container_name: backend
                 restart: always
                 ports:
                   - "80:8000"
                 environment:
-                  - MONGODB_URL=__MONGODB_URL__
-                  - SECRET_KEY=__SECRET_KEY__
+                  - MONGODB_URL=${{ secrets.MONGODB_URL }}
+                  - SECRET_KEY=${{ secrets.SECRET_KEY }}
                   - REDIS_URL=redis://redis:6379
                   - PROJECT_NAME=Helena Adventure (Prod)
                   - DATABASE_NAME=booking_system
@@ -246,11 +232,6 @@ jobs:
               app-network:
                 driver: bridge
             EOF
-
-            # Substitute placeholders with actual environment variables passed via SSH action
-            sed -i "s|__IMAGE_URI__|$IMAGE_URI|g" ~/docker-compose.yml
-            sed -i "s|__MONGODB_URL__|$MONGODB_URL|g" ~/docker-compose.yml
-            sed -i "s|__SECRET_KEY__|$SECRET_KEY|g" ~/docker-compose.yml
 
             docker-compose pull backend
             docker-compose up -d
