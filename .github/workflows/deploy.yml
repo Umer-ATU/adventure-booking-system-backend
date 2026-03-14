@@ -160,11 +160,16 @@ jobs:
           sleep 10
           curl -f http://localhost:8000/docs || exit 1
 
-      - name: Run k6 load test
-        uses: grafana/k6-action@v0.3.1
+      - name: Set up Python for Locust
+        uses: actions/setup-python@v5
         with:
-          filename: tests/load_test.js
-          flags: --vus 10 --duration 10s
+          python-version: '3.11'
+          
+      - name: Install and Run Locust load test
+        run: |
+          python -m pip install --upgrade pip
+          pip install locust
+          locust -f tests/locustfile.py --headless -u 10 -r 2 --run-time 10s --host http://localhost:8000
 
   deploy:
     name: Deploy to EC2
