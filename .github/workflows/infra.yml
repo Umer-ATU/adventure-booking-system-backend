@@ -24,6 +24,11 @@ env:
   TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
   TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
   TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  
+  # Custom Domain Config
+  TF_VAR_custom_domain_name: "adventure.umer-karachiwala.com"
+  TF_VAR_api_custom_domain_name: "api.adventure.umer-karachiwala.com"
+  TF_VAR_acm_certificate_arn: "arn:aws:acm:us-east-1:347254676058:certificate/36971970-1c72-4249-af6f-420ca5fefc64"
 
 jobs:
   terraform:
