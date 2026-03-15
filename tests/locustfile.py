@@ -5,7 +5,7 @@ class AdventureBookingUser(HttpUser):
 
     @task(3)
     def view_health(self):
-        self.client.get("/health", name="Health Check")
+        self.client.get("/api/health", name="Health Check")
 
     @task(2)
     def view_adventures(self):
@@ -13,4 +13,4 @@ class AdventureBookingUser(HttpUser):
 
     @task(1)
     def view_docs(self):
-        self.client.get("/docs", name="Swagger API Docs")
+        self.client.get("/api/docs", name="Swagger API Docs")
