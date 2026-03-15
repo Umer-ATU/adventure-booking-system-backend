@@ -7,7 +7,7 @@ pytestmark = pytest.mark.asyncio
 async def test_create_booking(async_client: AsyncClient, user_token):
     """Test creating a booking."""
     response = await async_client.post(
-        "/api/bookings/",
+        "/api/bookings",
         headers={"Authorization": f"Bearer {user_token}"},
         json={
             "full_name": "Test Customer",
@@ -26,7 +26,7 @@ async def test_create_booking(async_client: AsyncClient, user_token):
 async def test_create_booking_missing_consent(async_client: AsyncClient, user_token):
     """Test creating booking without consent."""
     response = await async_client.post(
-        "/api/bookings/",
+        "/api/bookings",
         headers={"Authorization": f"Bearer {user_token}"},
         json={
             "full_name": "No Consent",
@@ -42,7 +42,7 @@ async def test_create_booking_missing_consent(async_client: AsyncClient, user_to
 async def test_get_bookings_as_user(async_client: AsyncClient, user_token):
     """Test standard user accessing booking list (forbidden)."""
     response = await async_client.get(
-        "/api/bookings/",
+        "/api/bookings",
         headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 403
@@ -51,7 +51,7 @@ async def test_get_bookings_as_user(async_client: AsyncClient, user_token):
 async def test_get_bookings_as_admin(async_client: AsyncClient, admin_token):
     """Test admin accessing booking list."""
     response = await async_client.get(
-        "/api/bookings/",
+        "/api/bookings",
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
@@ -62,7 +62,7 @@ async def test_update_booking_as_admin(async_client: AsyncClient, admin_token, u
     """Test admin updating a booking."""
     # Create booking as user
     create_res = await async_client.post(
-        "/api/bookings/",
+        "/api/bookings",
         headers={"Authorization": f"Bearer {user_token}"},
         json={
             "full_name": "Update Me",

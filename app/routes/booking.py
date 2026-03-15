@@ -21,7 +21,7 @@ async def get_booking_repository(
     return BookingRepository(database)
 
 
-@router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking: BookingCreate,
     repo: BookingRepository = Depends(get_booking_repository),
@@ -46,7 +46,7 @@ async def create_booking(
     return result
 
 
-@router.get("/", response_model=List[BookingResponse])
+@router.get("", response_model=List[BookingResponse])
 async def get_all_bookings(
     skip: int = 0,
     limit: int = 100,
