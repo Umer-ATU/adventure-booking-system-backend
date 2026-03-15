@@ -21,7 +21,7 @@ def adventure_payload():
 @pytest.mark.asyncio
 async def test_create_adventure_admin(async_client: AsyncClient, admin_token: str, adventure_payload):
     response = await async_client.post(
-        "/api/adventures/",
+        "/api/adventures",
         json=adventure_payload,
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -34,7 +34,7 @@ async def test_create_adventure_admin(async_client: AsyncClient, admin_token: st
 @pytest.mark.asyncio
 async def test_create_adventure_user_forbidden(async_client: AsyncClient, user_token: str, adventure_payload):
     response = await async_client.post(
-        "/api/adventures/",
+        "/api/adventures",
         json=adventure_payload,
         headers={"Authorization": f"Bearer {user_token}"}
     )
@@ -44,9 +44,9 @@ async def test_create_adventure_user_forbidden(async_client: AsyncClient, user_t
 @pytest.mark.asyncio
 async def test_get_adventures(async_client: AsyncClient, admin_token: str, adventure_payload):
     # First create
-    await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     
-    response = await async_client.get("/api/adventures/")
+    response = await async_client.get("/api/adventures")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] >= 1
@@ -57,7 +57,7 @@ async def test_get_adventures(async_client: AsyncClient, admin_token: str, adven
 async def test_get_featured_adventures(async_client: AsyncClient, admin_token: str, adventure_payload):
     adv_data = adventure_payload.copy()
     adv_data["is_featured"] = True
-    await async_client.post("/api/adventures/", json=adv_data, headers={"Authorization": f"Bearer {admin_token}"})
+    await async_client.post("/api/adventures", json=adv_data, headers={"Authorization": f"Bearer {admin_token}"})
     
     response = await async_client.get("/api/adventures/featured")
     assert response.status_code == 200
@@ -66,7 +66,7 @@ async def test_get_featured_adventures(async_client: AsyncClient, admin_token: s
 
 @pytest.mark.asyncio
 async def test_get_categories(async_client: AsyncClient, admin_token: str, adventure_payload):
-    await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     response = await async_client.get("/api/adventures/categories")
     assert response.status_code == 200
     data = response.json()
@@ -75,7 +75,7 @@ async def test_get_categories(async_client: AsyncClient, admin_token: str, adven
 
 @pytest.mark.asyncio
 async def test_get_single_adventure(async_client: AsyncClient, admin_token: str, adventure_payload):
-    res_create = await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    res_create = await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     adv_id = res_create.json()["_id"]
     
     response = await async_client.get(f"/api/adventures/{adv_id}")
@@ -91,7 +91,7 @@ async def test_get_single_adventure_not_found(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_adventure(async_client: AsyncClient, admin_token: str, adventure_payload):
-    res_create = await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    res_create = await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     adv_id = res_create.json()["_id"]
     
     update_data = {"base_price": 199.99}
@@ -106,7 +106,7 @@ async def test_update_adventure(async_client: AsyncClient, admin_token: str, adv
 
 @pytest.mark.asyncio
 async def test_toggle_featured(async_client: AsyncClient, admin_token: str, adventure_payload):
-    res_create = await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    res_create = await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     adv_id = res_create.json()["_id"]
     
     response = await async_client.patch(
@@ -119,7 +119,7 @@ async def test_toggle_featured(async_client: AsyncClient, admin_token: str, adve
 
 @pytest.mark.asyncio
 async def test_toggle_active(async_client: AsyncClient, admin_token: str, adventure_payload):
-    res_create = await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    res_create = await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     adv_id = res_create.json()["_id"]
     
     response = await async_client.patch(
@@ -132,7 +132,7 @@ async def test_toggle_active(async_client: AsyncClient, admin_token: str, advent
 
 @pytest.mark.asyncio
 async def test_delete_adventure(async_client: AsyncClient, admin_token: str, adventure_payload):
-    res_create = await async_client.post("/api/adventures/", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
+    res_create = await async_client.post("/api/adventures", json=adventure_payload, headers={"Authorization": f"Bearer {admin_token}"})
     adv_id = res_create.json()["_id"]
     
     response = await async_client.delete(
