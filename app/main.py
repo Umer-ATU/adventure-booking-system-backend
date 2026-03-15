@@ -37,8 +37,8 @@ Book your thrilling experience at our adventure parks:
     """,
     version="1.0.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
     swagger_ui_parameters={"persistAuthorization": True},
     lifespan=lifespan
 )
@@ -65,10 +65,14 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# CORS - Allow all origins in development
+# CORS - Allow all origins in development, add production domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=[
+        "*", 
+        "https://adventure.umer-karachiwala.com", 
+        "http://adventure.umer-karachiwala.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,7 +82,7 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 
 
-@app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
 async def health_check():
     """Detailed health check."""
     return {
