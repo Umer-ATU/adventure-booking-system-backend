@@ -212,12 +212,15 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           MONGODB_URL: ${{ secrets.MONGODB_URL }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         with:
           host: ${{ env.EC2_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          envs: IMAGE_URI,REGISTRY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,MONGODB_URL,SECRET_KEY
+          envs: IMAGE_URI,REGISTRY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,MONGODB_URL,SECRET_KEY,STRIPE_PUBLISHABLE_KEY,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET
           script: |
             # Login to ECR on EC2
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
@@ -244,6 +247,9 @@ jobs:
                   - REDIS_URL=redis://redis:6379
                   - PROJECT_NAME=Helena Adventure (Prod)
                   - DATABASE_NAME=booking_system
+                  - STRIPE_PUBLISHABLE_KEY=__STRIPE_PUBLISHABLE_KEY__
+                  - STRIPE_SECRET_KEY=__STRIPE_SECRET_KEY__
+                  - STRIPE_WEBHOOK_SECRET=__STRIPE_WEBHOOK_SECRET__
                 depends_on:
                   - redis
                 networks:
@@ -258,6 +264,9 @@ jobs:
             sed -i "s|__IMAGE_URI__|$IMAGE_URI|g" ~/docker-compose.yml
             sed -i "s|__MONGODB_URL__|$MONGODB_URL|g" ~/docker-compose.yml
             sed -i "s|__SECRET_KEY__|$SECRET_KEY|g" ~/docker-compose.yml
+            sed -i "s|__STRIPE_PUBLISHABLE_KEY__|$STRIPE_PUBLISHABLE_KEY|g" ~/docker-compose.yml
+            sed -i "s|__STRIPE_SECRET_KEY__|$STRIPE_SECRET_KEY|g" ~/docker-compose.yml
+            sed -i "s|__STRIPE_WEBHOOK_SECRET__|$STRIPE_WEBHOOK_SECRET|g" ~/docker-compose.yml
 
             docker-compose pull backend
             docker-compose up -d
