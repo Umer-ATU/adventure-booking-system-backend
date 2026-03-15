@@ -34,7 +34,7 @@ async def get_adventure_repository(
 
 # ============== Public Endpoints ==============
 
-@router.get("/", response_model=AdventureListResponse)
+@router.get("", response_model=AdventureListResponse)
 async def list_adventures(
     query: Optional[str] = Query(None, description="Search query"),
     category: Optional[AdventureCategory] = Query(None, description="Filter by category"),
@@ -127,7 +127,7 @@ async def get_adventure(
 
 # ============== Admin Endpoints ==============
 
-@router.post("/", response_model=AdventureResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AdventureResponse, status_code=status.HTTP_201_CREATED)
 async def create_adventure(
     adventure_data: AdventureCreate,
     current_admin: UserInDB = Depends(get_current_admin),
