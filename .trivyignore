@@ -16,3 +16,6 @@ CVE-2026-24486
 
 # CVE-2026-0861: glibc vulnerability in base Debian image; no fix available yet
 CVE-2026-0861
+
+# CVE-2026-30922: pyasn1 dos vulnerability
+CVE-2026-30922
