@@ -43,6 +43,57 @@ graph TD;
     *   The image is pushed to **AWS ECR** (Amazon's Docker Registry).
     *   We automatically SSH into the **EC2 Server**, pull the new image, and restart the app.
 
+## 🏗️ System Architecture
+
+This diagram illustrates the high-level infrastructure and component layout of the production environment.
+
+```mermaid
+graph TD;
+    Client[Client / Web Browser] -->|HTTPS| CloudFront[AWS CloudFront];
+    CloudFront -->|Static Assets| S3[AWS S3 - React Frontend];
+    CloudFront -->|API Requests| EC2[AWS EC2 - FastAPI Backend];
+    
+    subgraph "Backend Server"
+        EC2 -->|Reads/Writes| MongoDB[(MongoDB - Database)];
+        EC2 -->|Caches| Redis[(Redis - Rate Limiting & Cache)];
+    end
+    
+    EC2 -->|Payment Processing| Stripe[Stripe Payment Gateway];
+```
+
+## 🗺️ User Journey & Payment Flow
+
+When a user books an adventure, the frontend and backend orchestrate a secure checkout process utilizing Stripe intents.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend as React Frontend
+    participant Backend as FastAPI Backend
+    participant Stripe as Stripe API
+    participant DB as MongoDB
+
+    User->>Frontend: Selects Adventure & Fills Form
+    Frontend->>Backend: POST /api/bookings (Create booking)
+    Backend->>DB: Save booking (Status: PENDING)
+    Backend-->>Frontend: Return Booking ID
+    
+    Frontend->>Backend: POST /api/payments/create-intent
+    Backend->>Stripe: Create PaymentIntent
+    Stripe-->>Backend: Return client_secret
+    Backend-->>Frontend: Return client_secret
+
+    User->>Frontend: Enters Credit Card Details
+    Frontend->>Stripe: Confirm Card Payment
+    Stripe-->>Frontend: Payment Success Response
+    
+    Frontend->>Backend: POST /api/payments/confirm
+    Backend->>Stripe: Verify Payment Status
+    Backend->>DB: Update booking (Status: PAID)
+    Backend-->>Frontend: Final Receipt
+    Frontend-->>User: Show Success Celebration Page
+```
+
 ## Setup
 
 ### 1. Environment Variables
