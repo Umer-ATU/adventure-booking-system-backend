@@ -28,7 +28,7 @@ class PaymentService:
         customer_email: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Create a Stripe PaymentIntent.
+        Create a Stripe PaymentIntent. Helena
         
         Args:
             amount: Amount in cents (e.g., 5000 = €50.00)
